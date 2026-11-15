@@ -65,6 +65,7 @@ export interface SessionConversationTurn {
 export interface HealthStatus {
   status: string;
   openRouterConfigured?: boolean;
+  gnaniConfigured?: boolean;
   geminiConfigured?: boolean;
   primaryModel?: string;
   fallbackModels?: readonly string[] | string[];

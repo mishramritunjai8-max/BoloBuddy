@@ -38,6 +38,8 @@ export const SERVER_CONFIG = {
   primaryModel: PRIMARY_OPENROUTER_MODEL,
   fallbackModels: FALLBACK_OPENROUTER_MODELS,
   requestTimeoutMs: 12000, // 12s per model attempt to prevent slow hanging
+  gnaniApiKey: process.env.GNANI_API_KEY?.trim(),
+  gnaniApiUrl: process.env.GNANI_API_URL?.trim() || 'https://api.vachana.ai/stt/v3',
   transcribeModel: process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash',
   maxAudioBytes: 8 * 1024 * 1024, // 8 MB max upload (~45s compressed voice)
   minAudioBytes: 400, // Reject empty/header-only recordings
@@ -48,6 +50,11 @@ export const SERVER_CONFIG = {
 export function isOpenRouterKeyConfigured(): boolean {
   const key = process.env.OPENROUTER_API_KEY?.trim();
   return Boolean(key && key !== 'MY_OPENROUTER_API_KEY' && key.length > 5);
+}
+
+export function isGnaniKeyConfigured(): boolean {
+  const key = process.env.GNANI_API_KEY?.trim();
+  return Boolean(key && key !== 'MY_GNANI_API_KEY' && key.length > 3);
 }
 
 export const ALLOWED_AUDIO_MIME_TYPES = new Set([

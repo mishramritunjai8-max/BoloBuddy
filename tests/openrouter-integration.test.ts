@@ -312,8 +312,17 @@ async function runAllTests() {
     for (const jsFile of jsFiles) {
       const content = fs.readFileSync(path.join(distPath, 'assets', jsFile), 'utf8');
       assert.ok(!content.includes('OPENROUTER_API_KEY='), `File ${jsFile} must not leak OPENROUTER_API_KEY`);
+      assert.ok(!content.includes('GNANI_API_KEY='), `File ${jsFile} must not leak GNANI_API_KEY`);
       assert.ok(!content.includes('sk-or-v1-'), `File ${jsFile} must not leak real sk-or key prefix`);
     }
+  })();
+
+  // Test 18: Gnani STT API key configuration and environment integration
+  await recordTest(18, 'Gnani STT configuration loads from environment', () => {
+    const envPath = path.resolve('.env');
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    assert.ok(envContent.includes('GNANI_API_KEY='), '.env must contain GNANI_API_KEY= placeholder');
+    assert.ok(SERVER_CONFIG.gnaniApiUrl.includes('api.vachana.ai') || SERVER_CONFIG.gnaniApiUrl.includes('gnani.ai'), 'Gnani API URL must point to Vachana/Gnani endpoint');
   })();
 
   console.log('\n======================================================');

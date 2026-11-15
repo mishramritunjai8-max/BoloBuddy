@@ -3,8 +3,10 @@ import {
   SERVER_CONFIG,
   SUPPORTED_LANGUAGES,
   isGeminiKeyConfigured,
+  isGnaniKeyConfigured,
   type SupportedLanguageId,
 } from './config.ts';
+import { callGnaniTranscription } from './gnaniService.ts';
 
 export interface UncertaintyCheckResult {
   needsClarification: boolean;
@@ -185,6 +187,26 @@ export async function transcribeChildAudio(params: {
   languageHint: SupportedLanguageId;
 }): Promise<TranscriptionResult> {
   const { audioBuffer, mimeType, languageHint } = params;
+
+  // 1. Primary Speech-to-Text: Gnani.ai STT API if GNANI_API_KEY is configured
+  if (isGnaniKeyConfigured()) {
+    try {
+      const gnaniResult = await callGnaniTranscription(audioBuffer, mimeType, languageHint);
+      if (gnaniResult.transcript) {
+        const detectedLanguage =
+          detectScriptLanguage(gnaniResult.transcript, languageHint);
+        const uncertainty = analyzeTranscriptUncertainty(gnaniResult.transcript, languageHint);
+        return {
+          transcript: gnaniResult.transcript,
+          detectedLanguage,
+          uncertainty,
+          modelUsed: gnaniResult.modelUsed,
+        };
+      }
+    } catch (gnaniErr) {
+      console.warn('[Gnani STT] Error calling Gnani transcription API:', (gnaniErr as Error).message);
+    }
+  }
 
   const ai = getAiClient();
   const base64Audio = audioBuffer.toString('base64');

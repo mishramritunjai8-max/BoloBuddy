@@ -5,6 +5,7 @@ import {
   PRIMARY_OPENROUTER_MODEL,
   SERVER_CONFIG,
   SUPPORTED_LANGUAGES,
+  isGnaniKeyConfigured,
   isOpenRouterKeyConfigured,
   isSupportedLanguage,
   normalizeAudioMimeType,
@@ -90,13 +91,14 @@ export function createApiApp() {
     res.json({
       status: 'ok',
       openRouterConfigured: isOpenRouterKeyConfigured(),
+      gnaniConfigured: isGnaniKeyConfigured(),
       primaryModel: PRIMARY_OPENROUTER_MODEL,
       fallbackModels: FALLBACK_OPENROUTER_MODELS,
       models: {
         primary: PRIMARY_OPENROUTER_MODEL,
         fallbacks: FALLBACK_OPENROUTER_MODELS,
         allConfigured: OPENROUTER_MODELS,
-        transcribe: SERVER_CONFIG.transcribeModel,
+        transcribe: isGnaniKeyConfigured() ? 'gnani/prisma-v3.0' : SERVER_CONFIG.transcribeModel,
       },
       supportedLanguages: Object.values(SUPPORTED_LANGUAGES).map((l) => ({
         id: l.id,
