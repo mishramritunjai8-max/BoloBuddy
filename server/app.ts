@@ -3,6 +3,7 @@ import {
   SERVER_CONFIG,
   SUPPORTED_LANGUAGES,
   isGeminiKeyConfigured,
+  isGroqKeyConfigured,
   isSupportedLanguage,
   normalizeAudioMimeType,
   type SupportedLanguageId,
@@ -84,12 +85,23 @@ export function createApiApp() {
 
   // Health check endpoint
   app.get('/api/health', (_req: Request, res: Response) => {
+    const activeProvider =
+      SERVER_CONFIG.aiProvider === 'groq' && isGroqKeyConfigured()
+        ? 'groq'
+        : isGeminiKeyConfigured()
+          ? 'gemini'
+          : isGroqKeyConfigured()
+            ? 'groq'
+            : 'none';
+
     res.json({
       status: 'ok',
       geminiConfigured: isGeminiKeyConfigured(),
+      groqConfigured: isGroqKeyConfigured(),
+      activeProvider,
       models: {
-        transcribe: SERVER_CONFIG.transcribeModel,
-        tutor: SERVER_CONFIG.tutorModel,
+        transcribe: isGroqKeyConfigured() ? `groq/${SERVER_CONFIG.groqWhisperModel}` : `gemini/${SERVER_CONFIG.transcribeModel}`,
+        tutor: activeProvider === 'groq' ? `groq/${SERVER_CONFIG.groqModel}` : `gemini/${SERVER_CONFIG.tutorModel}`,
       },
       supportedLanguages: Object.values(SUPPORTED_LANGUAGES).map((l) => ({
         id: l.id,

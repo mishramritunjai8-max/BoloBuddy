@@ -55,7 +55,9 @@ async function parseErrorResponse(res: Response, fallbackMsg: string): Promise<A
 
 export async function fetchHealthStatus(): Promise<HealthStatus> {
   try {
-    const res = await fetch('/api/health');
+    const res = await fetch('/api/health', {
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) {
       throw await parseErrorResponse(res, 'Could not reach the BoloBuddy server.');
     }
@@ -86,6 +88,7 @@ export async function transcribeAudioBlob(params: {
         'X-Language-Hint': languageHint,
       },
       body: blob,
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) {
@@ -95,9 +98,12 @@ export async function transcribeAudioBlob(params: {
     return (await res.json()) as TranscriptionResponse;
   } catch (err) {
     if (err instanceof ApiClientError) throw err;
+    const isTimeout = err instanceof Error && err.name === 'TimeoutError';
     throw new ApiClientError({
-      code: 'NETWORK_ERROR',
-      message: 'Network connection failed while sending audio for transcription.',
+      code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
+      message: isTimeout
+        ? 'Transcription took too long. Please try a shorter question or type directly.'
+        : 'Network connection failed while sending audio for transcription.',
       status: 0,
     });
   }
@@ -124,6 +130,7 @@ export async function askBoloBuddyQuestion(params: {
         history: params.history,
         actionMode: params.actionMode ?? 'ask',
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) {
@@ -133,9 +140,12 @@ export async function askBoloBuddyQuestion(params: {
     return (await res.json()) as TutorResponsePayload;
   } catch (err) {
     if (err instanceof ApiClientError) throw err;
+    const isTimeout = err instanceof Error && err.name === 'TimeoutError';
     throw new ApiClientError({
-      code: 'NETWORK_ERROR',
-      message: 'Network connection failed while talking to BoloBuddy.',
+      code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
+      message: isTimeout
+        ? 'BoloBuddy took a bit too long to respond. Please try asking again!'
+        : 'Network connection failed while talking to BoloBuddy.',
       status: 0,
     });
   }
@@ -153,6 +163,7 @@ export async function fetchLearningQuiz(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(params),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) {
@@ -162,9 +173,12 @@ export async function fetchLearningQuiz(params: {
     return (await res.json()) as QuizQuestionPayload;
   } catch (err) {
     if (err instanceof ApiClientError) throw err;
+    const isTimeout = err instanceof Error && err.name === 'TimeoutError';
     throw new ApiClientError({
-      code: 'NETWORK_ERROR',
-      message: 'Network connection failed while generating a quiz question.',
+      code: isTimeout ? 'TIMEOUT' : 'NETWORK_ERROR',
+      message: isTimeout
+        ? 'Quiz generation timed out. Please try again.'
+        : 'Network connection failed while generating a quiz question.',
       status: 0,
     });
   }

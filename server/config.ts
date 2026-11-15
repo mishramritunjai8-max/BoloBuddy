@@ -4,12 +4,16 @@ dotenv.config({ override: true });
 
 export const SERVER_CONFIG = {
   port: Number(process.env.PORT || 3000),
-  transcribeModel: process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-3.5-transcribe',
-  tutorModel: process.env.GEMINI_TUTOR_MODEL || 'gemini-4-hydrogen',
+  aiProvider: (process.env.AI_PROVIDER || 'auto').toLowerCase(), // 'auto' | 'gemini' | 'groq'
+  transcribeModel: process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash',
+  tutorModel: process.env.GEMINI_TUTOR_MODEL || 'gemini-2.5-flash',
+  groqApiKey: process.env.GROQ_API_KEY?.trim(),
+  groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  groqWhisperModel: process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo',
   maxAudioBytes: 8 * 1024 * 1024, // 8 MB max upload (~45s compressed voice)
   minAudioBytes: 400, // Reject empty/header-only recordings
   rateLimitWindowMs: 60 * 1000,
-  rateLimitMaxRequests: 35,
+  rateLimitMaxRequests: 60,
 } as const;
 
 export const ALLOWED_AUDIO_MIME_TYPES = new Set([
@@ -59,4 +63,9 @@ export function isSupportedLanguage(lang: unknown): lang is SupportedLanguageId 
 export function isGeminiKeyConfigured(): boolean {
   const key = process.env.GEMINI_API_KEY?.trim();
   return Boolean(key && key !== 'MY_GEMINI_API_KEY');
+}
+
+export function isGroqKeyConfigured(): boolean {
+  const key = process.env.GROQ_API_KEY?.trim();
+  return Boolean(key && key.startsWith('gsk_'));
 }

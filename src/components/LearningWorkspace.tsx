@@ -98,6 +98,27 @@ function getScriptClassForLanguage(langLabel: string, selectedId: WorkspaceLangu
   return 'font-sans';
 }
 
+function getSpeechLangCode(lang: WorkspaceLanguageId): string {
+  switch (lang) {
+    case 'hindi':
+      return 'hi-IN';
+    case 'bengali':
+      return 'bn-IN';
+    case 'tamil':
+      return 'ta-IN';
+    case 'telugu':
+      return 'te-IN';
+    case 'marathi':
+      return 'mr-IN';
+    case 'english':
+      return 'en-IN';
+    case 'hinglish':
+    case 'auto':
+    default:
+      return 'hi-IN';
+  }
+}
+
 export default function LearningWorkspace({
   onBackToLanding,
   initialTopicPrompt,
@@ -123,6 +144,8 @@ export default function LearningWorkspace({
 
   const transcriptInputRef = useRef<HTMLTextAreaElement | null>(null);
   const answerTopRef = useRef<HTMLDivElement | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
+  const liveSpeechTextRef = useRef<string>('');
 
   const {
     recorderState,
@@ -198,9 +221,43 @@ export default function LearningWorkspace({
     stopSpeaking();
 
     if (recorderState === 'recording') {
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+        speechRecognitionRef.current = null;
+      }
+
       const recorded = await stopRecording();
       if (!recorded) return;
 
+      // If instant speech recognition was captured, use it directly (0ms latency!)
+      const liveText = liveSpeechTextRef.current.trim();
+      if (liveText.length > 1) {
+        setTranscriptionMeta({
+          transcript: liveText,
+          detectedLanguage:
+            WORKSPACE_LANGUAGES.find((l) => l.id === selectedLang)?.shortLabel || 'Auto',
+          uncertainty: {
+            needsClarification: false,
+            reasons: [],
+            checkMethod: 'heuristic',
+            note: 'Instant on-device transcription (0ms)',
+          },
+          modelUsed: 'Browser Web Speech (Instant 0ms)',
+        });
+        setTranscriptInput(liveText);
+        setIsEditingTranscript(true);
+        setTimeout(() => {
+          transcriptInputRef.current?.focus();
+          transcriptInputRef.current?.setSelectionRange(liveText.length, liveText.length);
+        }, 40);
+        return;
+      }
+
+      // Fallback: fast server-side transcription (< 0.4s Groq Whisper or Gemini Flash)
       setIsTranscribing(true);
       try {
         const result = await transcribeAudioBlob({
@@ -227,6 +284,39 @@ export default function LearningWorkspace({
         setIsTranscribing(false);
       }
       return;
+    }
+
+    // Start recording audio + live speech recognition
+    liveSpeechTextRef.current = '';
+    const SpeechRecognition =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition ||
+          (window as any).webkitSpeechRecognition
+        : null;
+
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = getSpeechLangCode(selectedLang);
+        recognition.onresult = (event: any) => {
+          let accumulated = '';
+          for (let i = 0; i < event.results.length; i++) {
+            accumulated += event.results[i][0].transcript;
+          }
+          if (accumulated.trim()) {
+            liveSpeechTextRef.current = accumulated.trim();
+            setTranscriptInput(accumulated.trim());
+            setIsEditingTranscript(true);
+          }
+        };
+        recognition.onerror = () => {};
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      } catch {
+        // Fallback to standard recorder without live streaming
+      }
     }
 
     await startRecording();
