@@ -1,0 +1,6 @@
+{
+  "name": "BoloBuddy AI",
+  "description": "Your voice. Your language. Your learning buddy. A voice-first educational learning companion for children aged 6–14.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
