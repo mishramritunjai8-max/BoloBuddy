@@ -556,19 +556,19 @@ export default function LearningWorkspace({
           </div>
 
           {/* Honest Server Availability Notice */}
-          {(health && !health.geminiConfigured) || healthError ? (
+          {(health && health.openRouterConfigured === false) || healthError ? (
             <div className="mt-5 rounded-2xl bg-[#F5B69E]/28 border border-[#F5B69E]/70 p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-[var(--color-ink)] shrink-0 mt-0.5" aria-hidden="true" />
               <div className="text-sm text-[var(--color-ink)]">
                 <p className="font-semibold mb-0.5">
                   {healthError
                     ? 'Backend connection issue'
-                    : 'AI speech and tutoring service unavailable'}
+                    : 'OpenRouter API Key Needed'}
                 </p>
                 <p className="text-[var(--color-ink-muted)]">
                   {healthError
                     ? healthError
-                    : 'The server-side AI service is not active right now. Voice recording still works locally, and AI answers will resume once the server service is enabled.'}
+                    : 'OPENROUTER_API_KEY is not configured yet. Please paste your free OpenRouter API key into the .env file to enable BoloBuddy educational answers.'}
                 </p>
               </div>
             </div>
@@ -886,9 +886,18 @@ export default function LearningWorkspace({
                 className="rounded-3xl bg-[#F5B69E]/35 border border-[#F5B69E]/80 p-5 flex items-start gap-3 text-sm text-[var(--color-ink)]"
               >
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold mb-0.5">We ran into a problem</p>
-                  <p className="text-[var(--color-ink-muted)]">{workspaceError}</p>
+                  <p className="text-[var(--color-ink-muted)] mb-2.5">{workspaceError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void handleAskBoloBuddy()}
+                    disabled={isBusy || !transcriptInput.trim()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/70 hover:bg-white text-xs font-semibold text-[var(--color-ink)] transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Try again</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -940,6 +949,9 @@ export default function LearningWorkspace({
                       style={{ fontFamily: 'var(--font-label)' }}
                     >
                       {latestTurn.response.subject} · {latestTurn.response.detectedLanguage} · {latestTurn.timestamp}
+                      {latestTurn.response.modelUsed && (
+                        <span className="ml-1.5 opacity-65 font-normal">({latestTurn.response.modelUsed})</span>
+                      )}
                     </p>
                     <h2 className={`text-xl sm:text-2xl font-bold text-[var(--color-ink)] ${activeScriptClass}`}>
                       {latestTurn.response.answerTitle}

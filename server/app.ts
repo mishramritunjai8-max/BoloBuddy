@@ -1,21 +1,23 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import {
+  FALLBACK_OPENROUTER_MODELS,
+  OPENROUTER_MODELS,
+  PRIMARY_OPENROUTER_MODEL,
   SERVER_CONFIG,
   SUPPORTED_LANGUAGES,
-  isGeminiKeyConfigured,
-  isGroqKeyConfigured,
+  isOpenRouterKeyConfigured,
   isSupportedLanguage,
   normalizeAudioMimeType,
   type SupportedLanguageId,
 } from './config.ts';
+import { transcribeChildAudio } from './geminiService.ts';
 import {
   ApiServiceError,
-  askBoloBuddy,
-  generateQuizQuestion,
-  transcribeChildAudio,
+  askBoloBuddyWithOpenRouter,
+  generateQuizWithOpenRouter,
   type ConversationMessage,
   type LearningActionMode,
-} from './geminiService.ts';
+} from './openRouterService.ts';
 
 // Simple in-memory sliding-window rate limiter per IP
 const requestLog = new Map<string, number[]>();
@@ -85,23 +87,16 @@ export function createApiApp() {
 
   // Health check endpoint
   app.get('/api/health', (_req: Request, res: Response) => {
-    const activeProvider =
-      SERVER_CONFIG.aiProvider === 'groq' && isGroqKeyConfigured()
-        ? 'groq'
-        : isGeminiKeyConfigured()
-          ? 'gemini'
-          : isGroqKeyConfigured()
-            ? 'groq'
-            : 'none';
-
     res.json({
       status: 'ok',
-      geminiConfigured: isGeminiKeyConfigured(),
-      groqConfigured: isGroqKeyConfigured(),
-      activeProvider,
+      openRouterConfigured: isOpenRouterKeyConfigured(),
+      primaryModel: PRIMARY_OPENROUTER_MODEL,
+      fallbackModels: FALLBACK_OPENROUTER_MODELS,
       models: {
-        transcribe: isGroqKeyConfigured() ? `groq/${SERVER_CONFIG.groqWhisperModel}` : `gemini/${SERVER_CONFIG.transcribeModel}`,
-        tutor: activeProvider === 'groq' ? `groq/${SERVER_CONFIG.groqModel}` : `gemini/${SERVER_CONFIG.tutorModel}`,
+        primary: PRIMARY_OPENROUTER_MODEL,
+        fallbacks: FALLBACK_OPENROUTER_MODELS,
+        allConfigured: OPENROUTER_MODELS,
+        transcribe: SERVER_CONFIG.transcribeModel,
       },
       supportedLanguages: Object.values(SUPPORTED_LANGUAGES).map((l) => ({
         id: l.id,
@@ -214,7 +209,7 @@ export function createApiApp() {
           ? (actionMode as LearningActionMode)
           : 'ask');
 
-      const result = await askBoloBuddy({
+      const result = await askBoloBuddyWithOpenRouter({
         transcript: transcript.trim(),
         language: selectedLanguage,
         history: sanitizeHistory(history),
@@ -247,7 +242,7 @@ export function createApiApp() {
           ? topic.trim().slice(0, 400)
           : 'Everyday science curiosity';
 
-      const quiz = await generateQuizQuestion({
+      const quiz = await generateQuizWithOpenRouter({
         topic: safeTopic,
         language: selectedLanguage,
         history: sanitizeHistory(history),

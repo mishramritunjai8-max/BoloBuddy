@@ -2,19 +2,53 @@ import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
 
+// ============================================================================
+// Central Server-Side Configuration for BoloBuddy AI OpenRouter Free Models
+// ============================================================================
+// Exactly 5 free models in sequential fallback priority:
+// 1. baidu/ernie-5.5-flash-preview:free (Primary)
+// 2. inclusionai/ling-3.2-flash:free (Fallback 1)
+// 3. nvidia/nemotron-3.5-lightning:free (Fallback 2)
+// 4. nvidia/nemotron-3-ultra-550b-a55b:free (Fallback 3)
+// 5. nvidia/nemotron-3.5-super-vl:free (Fallback 4)
+export const OPENROUTER_MODELS = [
+  'baidu/ernie-5.5-flash-preview:free',
+  'inclusionai/ling-3.2-flash:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'nvidia/nemotron-3.5-super-vl:free',
+] as const;
+
+export type OpenRouterModelId = typeof OPENROUTER_MODELS[number];
+
+export const PRIMARY_OPENROUTER_MODEL: OpenRouterModelId = 'baidu/ernie-5.5-flash-preview:free';
+
+export const FALLBACK_OPENROUTER_MODELS: readonly OpenRouterModelId[] = [
+  'inclusionai/ling-3.2-flash:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'nvidia/nemotron-3.5-super-vl:free',
+];
+
 export const SERVER_CONFIG = {
   port: Number(process.env.PORT || 3000),
-  aiProvider: (process.env.AI_PROVIDER || 'auto').toLowerCase(), // 'auto' | 'gemini' | 'groq'
+  openRouterApiKey: process.env.OPENROUTER_API_KEY?.trim(),
+  openRouterBaseUrl: process.env.OPENROUTER_BASE_URL?.trim() || 'https://openrouter.ai/api/v1',
+  openRouterModels: OPENROUTER_MODELS,
+  primaryModel: PRIMARY_OPENROUTER_MODEL,
+  fallbackModels: FALLBACK_OPENROUTER_MODELS,
+  requestTimeoutMs: 12000, // 12s per model attempt to prevent slow hanging
   transcribeModel: process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash',
-  tutorModel: process.env.GEMINI_TUTOR_MODEL || 'gemini-2.5-flash',
-  groqApiKey: process.env.GROQ_API_KEY?.trim(),
-  groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-  groqWhisperModel: process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo',
   maxAudioBytes: 8 * 1024 * 1024, // 8 MB max upload (~45s compressed voice)
   minAudioBytes: 400, // Reject empty/header-only recordings
   rateLimitWindowMs: 60 * 1000,
   rateLimitMaxRequests: 60,
 } as const;
+
+export function isOpenRouterKeyConfigured(): boolean {
+  const key = process.env.OPENROUTER_API_KEY?.trim();
+  return Boolean(key && key !== 'MY_OPENROUTER_API_KEY' && key.length > 5);
+}
 
 export const ALLOWED_AUDIO_MIME_TYPES = new Set([
   'audio/webm',
